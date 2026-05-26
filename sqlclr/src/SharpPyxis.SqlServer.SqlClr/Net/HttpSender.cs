@@ -1,5 +1,6 @@
 using System;
-using System.Net.Http;
+using System.IO;
+using System.Net;
 using System.Text;
 
 namespace SharpPyxis.SqlServer.SqlClr.Net
@@ -16,13 +17,25 @@ namespace SharpPyxis.SqlServer.SqlClr.Net
 
     internal static class HttpSender
     {
+        static HttpSender()
+        {
+            try
+            {
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls13;
+            }
+            catch
+            {
+                // TLS 1.3 enum value absent on some .NET 4.8 builds; fall back to TLS 1.2 only
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+            }
+        }
+
         public static SendResult SendCore(
             string? method, string? url, byte[]? body,
             string? contentType, string? accept, string? headers,
             int timeoutSeconds)
         {
             var res = new SendResult();
-
             try
             {
                 if (string.IsNullOrWhiteSpace(method) || string.IsNullOrWhiteSpace(url))
@@ -31,95 +44,81 @@ namespace SharpPyxis.SqlServer.SqlClr.Net
                     return res;
                 }
 
-                string requestMethod = method!.Trim().ToUpperInvariant();
-                string requestUrl = url!;
+                var req = (HttpWebRequest)WebRequest.Create(url!);
+                req.Method = method!.Trim().ToUpperInvariant();
+                req.AllowAutoRedirect = false;
+                req.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+                req.KeepAlive = true;
+                req.Timeout = timeoutSeconds > 0 ? timeoutSeconds * 1000 : 100000;
+                req.Accept = !string.IsNullOrWhiteSpace(accept) ? accept : "application/octet-stream";
 
-                var client = HttpClientFactory.Client;
-                if (timeoutSeconds > 0)
-                    client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
-
-                using (var req = new HttpRequestMessage(new HttpMethod(requestMethod), requestUrl))
+                // Additional headers: tab-separated "Name\tValue", one per line
+                if (!string.IsNullOrWhiteSpace(headers))
                 {
-                    req.Headers.Accept.Clear();
-                    if (!string.IsNullOrWhiteSpace(accept))
-                        req.Headers.TryAddWithoutValidation("Accept", accept);
-                    else
-                        req.Headers.TryAddWithoutValidation("Accept", "application/octet-stream");
-
-                    // Additional headers: tab-separated "Name\tValue", one per line
-                    if (!string.IsNullOrWhiteSpace(headers))
+                    var lines = headers!.Replace("\r", "").Split('\n');
+                    for (int i = 0; i < lines.Length; i++)
                     {
-                        string rawHeaders = headers!;
-                        var lines = rawHeaders.Replace("\r", "").Split('\n');
-                        for (int i = 0; i < lines.Length; i++)
-                        {
-                            var line = lines[i];
-                            if (string.IsNullOrWhiteSpace(line)) continue;
-                            var parts = line.Split(new[] { '\t' }, 2);
-                            if (parts.Length != 2) continue;
-
-                            var name = parts[0].Trim();
-                            string value = parts[1] ?? string.Empty;
-
-                            if (!req.Headers.TryAddWithoutValidation(name, value))
-                            {
-                                if (req.Content == null) req.Content = new ByteArrayContent(Array.Empty<byte>());
-                                req.Content.Headers.TryAddWithoutValidation(name, value);
-                            }
-                        }
+                        var line = lines[i];
+                        if (string.IsNullOrWhiteSpace(line)) continue;
+                        var parts = line.Split(new[] { '\t' }, 2);
+                        if (parts.Length != 2) continue;
+                        try { req.Headers[parts[0].Trim()] = parts[1] ?? string.Empty; }
+                        catch { }
                     }
+                }
 
-                    var hasBody = body != null && body.Length > 0 &&
-                                  !string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase);
-                    if (hasBody)
-                    {
-                        req.Content = new ByteArrayContent(body);
-                        req.Content.Headers.ContentType =
-                            new System.Net.Http.Headers.MediaTypeHeaderValue(
-                                !string.IsNullOrWhiteSpace(contentType) ? contentType : "application/octet-stream");
-                    }
+                bool hasBody = body != null && body.Length > 0 &&
+                               !string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase);
+                if (hasBody)
+                {
+                    req.ContentType = !string.IsNullOrWhiteSpace(contentType)
+                        ? contentType
+                        : "application/octet-stream";
+                    req.ContentLength = body!.Length;
+                    using (var stream = req.GetRequestStream())
+                        stream.Write(body, 0, body.Length);
+                }
 
-                    HttpResponseMessage? resp = null;
+                HttpWebResponse? resp = null;
+                try
+                {
+                    resp = (HttpWebResponse)req.GetResponse();
+                }
+                catch (WebException ex) when (ex.Response is HttpWebResponse)
+                {
+                    // HTTP error response (4xx, 5xx): capture it as data, not as an exception
+                    resp = (HttpWebResponse)ex.Response;
+                }
+                catch (Exception exSend)
+                {
+                    // TCP/network-level failure: no HTTP response available
+                    res.Error = exSend.Message;
+                    return res;
+                }
+
+                using (resp)
+                {
+                    res.Status = (int)resp!.StatusCode;
+                    res.Ok = res.Status >= 200 && res.Status < 300;
+                    res.Reason = resp.StatusDescription ?? "";
+
+                    var hdr = new StringBuilder();
+                    for (int i = 0; i < resp.Headers.Count; i++)
+                        hdr.Append(resp.Headers.GetKey(i)).Append(": ").Append(resp.Headers.Get(i)).Append("\r\n");
+                    res.ResponseHeaders = hdr.ToString();
+
                     try
                     {
-                        // SQL CLR threads cannot use async/await; block synchronously
-                        resp = client
-                            .SendAsync(req, HttpCompletionOption.ResponseHeadersRead)
-                            .GetAwaiter().GetResult();
-                    }
-                    catch (Exception exSend)
-                    {
-                        res.Error = exSend.Message;
-                        return res;
-                    }
-
-                    HttpResponseMessage response = resp!;
-                    using (response)
-                    {
-                        res.Status = (int)response.StatusCode;
-                        res.Ok = response.IsSuccessStatusCode;
-                        res.Reason = response.ReasonPhrase ?? "";
-
-                        var hdr = new StringBuilder();
-                        foreach (var h in response.Headers)
-                            hdr.Append(h.Key).Append(": ").Append(string.Join(", ", h.Value)).Append("\r\n");
-                        if (response.Content != null)
+                        using (var ms = new MemoryStream())
                         {
-                            foreach (var h in response.Content.Headers)
-                                hdr.Append(h.Key).Append(": ").Append(string.Join(", ", h.Value)).Append("\r\n");
-
-                            try
-                            {
-                                res.Body = response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
-                            }
-                            catch (Exception exRead)
-                            {
-                                res.Error = res.Error.Length == 0 ? exRead.Message : res.Error + " | " + exRead.Message;
-                                res.Body = Array.Empty<byte>();
-                            }
+                            resp.GetResponseStream()?.CopyTo(ms);
+                            res.Body = ms.ToArray();
                         }
-
-                        res.ResponseHeaders = hdr.ToString();
+                    }
+                    catch (Exception exRead)
+                    {
+                        res.Error = exRead.Message;
+                        res.Body = Array.Empty<byte>();
                     }
                 }
             }

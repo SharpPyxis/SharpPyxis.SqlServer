@@ -45,22 +45,22 @@ else
 begin
     if exists (
                   select 1
-                  from sys.asymmetric_keys
+                  from [master].sys.asymmetric_keys
                   where name = @key_name
               )
     begin
         print '- dropping existing asymmetric key: ' + @key_name;
-        set @sql = N'drop asymmetric key ' + quotename(@key_name) + N';';
+        set @sql = N'use [master]; drop asymmetric key ' + quotename(@key_name) + N';';
         exec sys.sp_executesql @sql;
     end;
 
     print '- creating asymmetric key from dll file...';
-    set @sql = N'create asymmetric key ' + quotename(@key_name)
+    set @sql = N'use [master]; create asymmetric key ' + quotename(@key_name)
              + N' from executable file = N''' + replace(@assembly_path, '''', '''''') + N''';';
     exec sp_executesql @sql;
 
     print '- creating sql login from asymmetric key...';
-    set @sql = N'create login ' + quotename(@login_name) + N' from asymmetric key ' + quotename(@key_name) + N';';
+    set @sql = N'use [master]; create login ' + quotename(@login_name) + N' from asymmetric key ' + quotename(@key_name) + N';';
     exec sp_executesql @sql;
 end;
 
@@ -75,7 +75,7 @@ if not exists (
                     and sp.permission_name = 'external access assembly'
               )
 begin
-    set @sql = N'grant external access assembly to ' + quotename(@login_name) + N';';
+    set @sql = N'use [master]; grant external access assembly to ' + quotename(@login_name) + N';';
     exec sp_executesql @sql;
     print '- grant applied.';
 end;
@@ -134,10 +134,10 @@ create function ' + quotename(@schema_name) + N'.http_send
 (
     @method nvarchar(10),
     @url nvarchar(4000),
-    @body varbinary(max) = null,
+    @body varbinary(max),
     @content_type nvarchar(200) = null,
     @accept nvarchar(200) = null,
-    @headers nvarchar(max) = null,
+    @headers nvarchar(max),
     @timeout_seconds int = 30
 )
 returns table
@@ -149,7 +149,7 @@ returns table
     body varbinary(max),
     error nvarchar(max)
 )
-as external name [' + @assembly_name + N'].SharpPyxis.SqlServer.SqlClr.Http.Send;';
+as external name [' + @assembly_name + N'].[SharpPyxis.SqlServer.SqlClr.Http].[Send];';
 exec sp_executesql @sql;
 
 -- http_multipart_build (tvf returning content_type, body)
@@ -172,7 +172,7 @@ returns table
     content_type nvarchar(200),
     body varbinary(max)
 )
-as external name [' + @assembly_name + N'].SharpPyxis.SqlServer.SqlClr.Multipart.Build;';
+as external name [' + @assembly_name + N'].[SharpPyxis.SqlServer.SqlClr.Multipart].[Build];';
 exec sys.sp_executesql @sql;
 
 -- text_encoding_url_encode (scalar)
@@ -185,7 +185,7 @@ end;
 set @sql = N'
 create function ' + quotename(@schema_name) + N'.text_encoding_url_encode(@text nvarchar(max))
 returns nvarchar(max)
-as external name [' + @assembly_name + N'].SharpPyxis.SqlServer.SqlClr.TextEncoding.UrlEncode;';
+as external name [' + @assembly_name + N'].[SharpPyxis.SqlServer.SqlClr.TextEncoding].[UrlEncode];';
 exec sp_executesql @sql;
 
 -- text_encoding_text_to_bytes (scalar)
@@ -198,7 +198,7 @@ end;
 set @sql = N'
 create function ' + quotename(@schema_name) + N'.text_encoding_text_to_bytes(@text nvarchar(max), @encoding nvarchar(40) = null)
 returns varbinary(max)
-as external name [' + @assembly_name + N'].SharpPyxis.SqlServer.SqlClr.TextEncoding.TextToBytes;';
+as external name [' + @assembly_name + N'].[SharpPyxis.SqlServer.SqlClr.TextEncoding].[TextToBytes];';
 exec sp_executesql @sql;
 
 -- text_encoding_bytes_to_text (scalar)
@@ -211,7 +211,7 @@ end;
 set @sql = N'
 create function ' + quotename(@schema_name) + N'.text_encoding_bytes_to_text(@data varbinary(max), @encoding nvarchar(40) = null)
 returns nvarchar(max)
-as external name [' + @assembly_name + N'].SharpPyxis.SqlServer.SqlClr.TextEncoding.BytesToText;';
+as external name [' + @assembly_name + N'].[SharpPyxis.SqlServer.SqlClr.TextEncoding].[BytesToText];';
 exec sp_executesql @sql;
 
 print 'installation complete.';

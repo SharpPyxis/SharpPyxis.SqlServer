@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <Configuration Condition="'$(Configuration)' == ''">Release</Configuration>
@@ -26,10 +26,6 @@
     <WarningLevel>8</WarningLevel>
   </PropertyGroup>
 
-  <ItemGroup>
-    <!-- Resolves to the framework assembly (GAC) rather than the NuGet package -->
-    <Reference Include="System.Net.Http" />
-  </ItemGroup>
 
 </Project>
 
