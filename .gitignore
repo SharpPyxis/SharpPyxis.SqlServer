@@ -6,3 +6,4 @@ artifacts/
 _local/
 .github/
 claude.md
+*.snk

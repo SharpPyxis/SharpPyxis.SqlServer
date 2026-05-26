@@ -5,8 +5,19 @@ using SharpPyxis.SqlServer.SqlClr.Net.Multipart;
 
 namespace SharpPyxis.SqlServer.SqlClr
 {
+    /// <summary>SQL CLR entry points for multipart/form-data assembly.</summary>
     public static class Multipart
     {
+        /// <summary>
+        /// Builds a <c>multipart/form-data</c> body and returns one row with the content type and binary body.
+        /// </summary>
+        /// <param name="packedFiles">
+        /// Binary-packed files. Each entry: <c>[Int64 length][NCHAR(260) name (520 bytes UTF-16)][content]</c>.
+        /// Pass <c>NULL</c> to include no files.
+        /// </param>
+        /// <param name="fileFieldName">Form field name applied to all uploaded files.</param>
+        /// <param name="textFields">Optional text fields, one per line: <c>Name\tValue</c>.</param>
+        /// <param name="boundary">Multipart boundary string; auto-generated if <c>NULL</c>.</param>
         [SqlFunction(
             DataAccess = DataAccessKind.None,
             IsDeterministic = false,
@@ -27,6 +38,7 @@ namespace SharpPyxis.SqlServer.SqlClr
             yield return result;
         }
 
+        /// <summary>SQL CLR TVF fill-row callback; not for direct use.</summary>
         public static void FillBuildRow(object obj, out SqlString content_type, out SqlBytes body)
         {
             MultipartBuilt result = (MultipartBuilt)obj;

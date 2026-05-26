@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net.Http;
 using System.Text;
 
@@ -21,13 +21,13 @@ namespace SharpPyxis.SqlServer.SqlClr.Net
             string? contentType, string? accept, string? headers,
             int timeoutSeconds)
         {
-            var res = new SendResult(); // Status=0 / Ok=false par défaut
+            var res = new SendResult();
 
             try
             {
                 if (string.IsNullOrWhiteSpace(method) || string.IsNullOrWhiteSpace(url))
                 {
-                    res.Error = "method et url requis.";
+                    res.Error = "method and url are required.";
                     return res;
                 }
 
@@ -40,14 +40,13 @@ namespace SharpPyxis.SqlServer.SqlClr.Net
 
                 using (var req = new HttpRequestMessage(new HttpMethod(requestMethod), requestUrl))
                 {
-                    // Accept
                     req.Headers.Accept.Clear();
                     if (!string.IsNullOrWhiteSpace(accept))
                         req.Headers.TryAddWithoutValidation("Accept", accept);
                     else
                         req.Headers.TryAddWithoutValidation("Accept", "application/octet-stream");
 
-                    // Headers additionnels
+                    // Additional headers: tab-separated "Name\tValue", one per line
                     if (!string.IsNullOrWhiteSpace(headers))
                     {
                         string rawHeaders = headers!;
@@ -70,7 +69,6 @@ namespace SharpPyxis.SqlServer.SqlClr.Net
                         }
                     }
 
-                    // Corps (non-GET)
                     var hasBody = body != null && body.Length > 0 &&
                                   !string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase);
                     if (hasBody)
@@ -81,19 +79,18 @@ namespace SharpPyxis.SqlServer.SqlClr.Net
                                 !string.IsNullOrWhiteSpace(contentType) ? contentType : "application/octet-stream");
                     }
 
-                    // .NET Framework : SendAsync + GetResult (sync)
                     HttpResponseMessage? resp = null;
                     try
                     {
-                        // Optionnel: demander les en-têtes d'abord si tu veux limiter la taille ensuite
-                        resp = HttpClientFactory.Client
+                        // SQL CLR threads cannot use async/await; block synchronously
+                        resp = client
                             .SendAsync(req, HttpCompletionOption.ResponseHeadersRead)
                             .GetAwaiter().GetResult();
                     }
                     catch (Exception exSend)
                     {
                         res.Error = exSend.Message;
-                        return res; // status=0, ok=false
+                        return res;
                     }
 
                     HttpResponseMessage response = resp!;
@@ -103,7 +100,6 @@ namespace SharpPyxis.SqlServer.SqlClr.Net
                         res.Ok = response.IsSuccessStatusCode;
                         res.Reason = response.ReasonPhrase ?? "";
 
-                        // En-têtes → texte "Name: Value"
                         var hdr = new StringBuilder();
                         foreach (var h in response.Headers)
                             hdr.Append(h.Key).Append(": ").Append(string.Join(", ", h.Value)).Append("\r\n");
@@ -114,12 +110,10 @@ namespace SharpPyxis.SqlServer.SqlClr.Net
 
                             try
                             {
-                                // Lecture corps protégée
                                 res.Body = response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
                             }
                             catch (Exception exRead)
                             {
-                                // Le serveur a répondu mais le stream s’est mal passé : on capture
                                 res.Error = res.Error.Length == 0 ? exRead.Message : res.Error + " | " + exRead.Message;
                                 res.Body = Array.Empty<byte>();
                             }
@@ -131,13 +125,7 @@ namespace SharpPyxis.SqlServer.SqlClr.Net
             }
             catch (Exception ex)
             {
-                // Catch global (dernière ligne de défense)
-                res.Status = 0;
-                res.Ok = false;
-                res.Reason = "";
-                res.ResponseHeaders = "";
-                res.Body = Array.Empty<byte>();
-                res.Error = ex.Message;
+                res = new SendResult { Error = ex.Message };
             }
 
             return res;

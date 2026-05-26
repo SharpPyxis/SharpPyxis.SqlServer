@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 using System.Net.Http;
 
@@ -16,9 +16,9 @@ namespace SharpPyxis.SqlServer.SqlClr.Net
                 }
                 catch
                 {
+                    // TLS 1.3 enum value absent on some .NET 4.8 builds; fall back to TLS 1.2 only
                     ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
                 }
-
 
                 var handler = new HttpClientHandler()
                 {
@@ -29,7 +29,7 @@ namespace SharpPyxis.SqlServer.SqlClr.Net
 
                 var client = new HttpClient(handler, true)
                 {
-                    Timeout = TimeSpan.FromSeconds(100) // défaut; overridable par appel
+                    Timeout = TimeSpan.FromSeconds(100)
                 };
                 client.DefaultRequestHeaders.ConnectionClose = false;
                 return client;

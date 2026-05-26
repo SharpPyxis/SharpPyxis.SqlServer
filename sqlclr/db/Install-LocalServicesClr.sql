@@ -118,9 +118,15 @@ exec sp_executesql @sql;
 print '5) recreating sql clr functions...';
 
 -- http_send (tvf)
+-- contract: always returns exactly one row; never raises.
+--   ok=1                  => 2xx response; check body.
+--   ok=0 and status > 0   => server returned a non-2xx status; check status, reason, error.
+--   ok=0 and status = 0   => tcp/network-level failure (no http response); check error.
+-- the caller must always inspect ok and status before consuming body.
 if object_id(@schema_name + N'.http_send', 'IF') is not null
 begin
-    exec(N'drop function ' + quotename(@schema_name) + N'.http_send;');
+    set @sql = N'drop function ' + quotename(@schema_name) + N'.http_send;';
+    exec sp_executesql @sql;
 end;
 
 set @sql = N'
@@ -146,31 +152,11 @@ returns table
 as external name [' + @assembly_name + N'].SharpPyxis.SqlServer.SqlClr.Http.Send;';
 exec sp_executesql @sql;
 
--- http_send_strict (scalar returning body or raising)
-if object_id(@schema_name + N'.http_send_strict', 'FN') is not null
-begin
-    exec(N'drop function ' + quotename(@schema_name) + N'.http_send_strict;');
-end;
-
-set @sql = N'
-create function ' + quotename(@schema_name) + N'.http_send_strict
-(
-    @method nvarchar(10),
-    @url nvarchar(4000),
-    @body varbinary(max) = null,
-    @content_type nvarchar(200) = null,
-    @accept nvarchar(200) = null,
-    @headers nvarchar(max) = null,
-    @timeout_seconds int = 30
-)
-returns varbinary(max)
-as external name [' + @assembly_name + N'].SharpPyxis.SqlServer.SqlClr.Http.SendStrict;';
-exec sp_executesql @sql;
-
 -- http_multipart_build (tvf returning content_type, body)
 if object_id(@schema_name + N'.http_multipart_build', 'IF') is not null
 begin
-    exec(N'drop function ' + quotename(@schema_name) + N'.http_multipart_build;');
+    set @sql = N'drop function ' + quotename(@schema_name) + N'.http_multipart_build;';
+    exec sp_executesql @sql;
 end;
 
 set @sql = N'
@@ -192,7 +178,8 @@ exec sys.sp_executesql @sql;
 -- text_encoding_url_encode (scalar)
 if object_id(@schema_name + N'.text_encoding_url_encode', 'FN') is not null
 begin
-    exec(N'drop function ' + quotename(@schema_name) + N'.text_encoding_url_encode;');
+    set @sql = N'drop function ' + quotename(@schema_name) + N'.text_encoding_url_encode;';
+    exec sp_executesql @sql;
 end;
 
 set @sql = N'
@@ -204,7 +191,8 @@ exec sp_executesql @sql;
 -- text_encoding_text_to_bytes (scalar)
 if object_id(@schema_name + N'.text_encoding_text_to_bytes', 'FN') is not null
 begin
-    exec(N'drop function ' + quotename(@schema_name) + N'.text_encoding_text_to_bytes;');
+    set @sql = N'drop function ' + quotename(@schema_name) + N'.text_encoding_text_to_bytes;';
+    exec sp_executesql @sql;
 end;
 
 set @sql = N'
@@ -216,7 +204,8 @@ exec sp_executesql @sql;
 -- text_encoding_bytes_to_text (scalar)
 if object_id(@schema_name + N'.text_encoding_bytes_to_text', 'FN') is not null
 begin
-    exec(N'drop function ' + quotename(@schema_name) + N'.text_encoding_bytes_to_text;');
+    set @sql = N'drop function ' + quotename(@schema_name) + N'.text_encoding_bytes_to_text;';
+    exec sp_executesql @sql;
 end;
 
 set @sql = N'

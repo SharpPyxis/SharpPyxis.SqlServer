@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text;
 
@@ -25,7 +25,7 @@ namespace SharpPyxis.SqlServer.SqlClr.Net.Multipart
                     ms.Write(bytes, 0, bytes.Length);
                 };
 
-                // text fields: "name<TAB>value" per line
+                // Text fields: "Name\tValue" per line
                 if (!string.IsNullOrWhiteSpace(textFields))
                 {
                     string rawTextFields = textFields!;
@@ -44,7 +44,6 @@ namespace SharpPyxis.SqlServer.SqlClr.Net.Multipart
                     }
                 }
 
-                // files
                 PackedFileReader.ForEach(packedFiles, (name, buf) =>
                 {
                     string safeName = string.IsNullOrWhiteSpace(name) ? "file.bin" : name;

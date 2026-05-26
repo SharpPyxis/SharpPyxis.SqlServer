@@ -4,8 +4,10 @@ using SharpPyxis.SqlServer.SqlClr.Util;
 
 namespace SharpPyxis.SqlServer.SqlClr
 {
+    /// <summary>SQL CLR entry points for text encoding operations.</summary>
     public static class TextEncoding
     {
+        /// <summary>Percent-encodes a string using RFC 3986 rules (<see cref="System.Uri.EscapeDataString"/>).</summary>
         [SqlFunction(DataAccess = DataAccessKind.None, IsDeterministic = true)]
         public static SqlString UrlEncode(SqlString text)
         {
@@ -17,6 +19,9 @@ namespace SharpPyxis.SqlServer.SqlClr
             return new SqlString(EncodingUtils.UrlEncode(text.Value) ?? string.Empty);
         }
 
+        /// <summary>Decodes a byte array to a string using the specified encoding.</summary>
+        /// <param name="data">Raw byte array to decode.</param>
+        /// <param name="encoding">IANA or code-page encoding name (e.g. <c>utf-8</c>, <c>iso-8859-1</c>). Defaults to UTF-8.</param>
         [SqlFunction(DataAccess = DataAccessKind.None, IsDeterministic = true)]
         public static SqlChars BytesToText(SqlBytes data, SqlString encoding)
         {
@@ -29,6 +34,9 @@ namespace SharpPyxis.SqlServer.SqlClr
             return text == null ? SqlChars.Null : new SqlChars(text);
         }
 
+        /// <summary>Encodes a string to a byte array using the specified encoding.</summary>
+        /// <param name="text">String to encode.</param>
+        /// <param name="encoding">IANA or code-page encoding name (e.g. <c>utf-8</c>, <c>windows-1252</c>). Defaults to UTF-8.</param>
         [SqlFunction(DataAccess = DataAccessKind.None, IsDeterministic = true)]
         public static SqlBytes TextToBytes(SqlChars text, SqlString encoding)
         {
