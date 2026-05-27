@@ -175,43 +175,69 @@ returns table
 as external name [' + @assembly_name + N'].[SharpPyxis.SqlServer.SqlClr.Multipart].[Build];';
 exec sys.sp_executesql @sql;
 
--- text_encoding_url_encode (scalar)
-if object_id(@schema_name + N'.text_encoding_url_encode', 'FN') is not null
+-- url_encode (scalar)
+if object_id(@schema_name + N'.url_encode', 'FN') is not null
 begin
-    set @sql = N'drop function ' + quotename(@schema_name) + N'.text_encoding_url_encode;';
+    set @sql = N'drop function ' + quotename(@schema_name) + N'.url_encode;';
     exec sp_executesql @sql;
 end;
 
 set @sql = N'
-create function ' + quotename(@schema_name) + N'.text_encoding_url_encode(@text nvarchar(max))
+create function ' + quotename(@schema_name) + N'.url_encode(@text nvarchar(max))
 returns nvarchar(max)
 as external name [' + @assembly_name + N'].[SharpPyxis.SqlServer.SqlClr.TextEncoding].[UrlEncode];';
 exec sp_executesql @sql;
 
--- text_encoding_text_to_bytes (scalar)
-if object_id(@schema_name + N'.text_encoding_text_to_bytes', 'FN') is not null
+-- text_to_bytes (scalar)
+if object_id(@schema_name + N'.text_to_bytes', 'FN') is not null
 begin
-    set @sql = N'drop function ' + quotename(@schema_name) + N'.text_encoding_text_to_bytes;';
+    set @sql = N'drop function ' + quotename(@schema_name) + N'.text_to_bytes;';
     exec sp_executesql @sql;
 end;
 
 set @sql = N'
-create function ' + quotename(@schema_name) + N'.text_encoding_text_to_bytes(@text nvarchar(max), @encoding nvarchar(40) = null)
+create function ' + quotename(@schema_name) + N'.text_to_bytes(@text nvarchar(max), @encoding nvarchar(40) = null)
 returns varbinary(max)
 as external name [' + @assembly_name + N'].[SharpPyxis.SqlServer.SqlClr.TextEncoding].[TextToBytes];';
 exec sp_executesql @sql;
 
--- text_encoding_bytes_to_text (scalar)
-if object_id(@schema_name + N'.text_encoding_bytes_to_text', 'FN') is not null
+-- bytes_to_text (scalar)
+if object_id(@schema_name + N'.bytes_to_text', 'FN') is not null
 begin
-    set @sql = N'drop function ' + quotename(@schema_name) + N'.text_encoding_bytes_to_text;';
+    set @sql = N'drop function ' + quotename(@schema_name) + N'.bytes_to_text;';
     exec sp_executesql @sql;
 end;
 
 set @sql = N'
-create function ' + quotename(@schema_name) + N'.text_encoding_bytes_to_text(@data varbinary(max), @encoding nvarchar(40) = null)
+create function ' + quotename(@schema_name) + N'.bytes_to_text(@data varbinary(max), @encoding nvarchar(40) = null)
 returns nvarchar(max)
 as external name [' + @assembly_name + N'].[SharpPyxis.SqlServer.SqlClr.TextEncoding].[BytesToText];';
+exec sp_executesql @sql;
+
+-- bytes_to_base64 (scalar)
+if object_id(@schema_name + N'.bytes_to_base64', 'FN') is not null
+begin
+    set @sql = N'drop function ' + quotename(@schema_name) + N'.bytes_to_base64;';
+    exec sp_executesql @sql;
+end;
+
+set @sql = N'
+create function ' + quotename(@schema_name) + N'.bytes_to_base64(@data varbinary(max))
+returns nvarchar(max)
+as external name [' + @assembly_name + N'].[SharpPyxis.SqlServer.SqlClr.TextEncoding].[BytesToBase64];';
+exec sp_executesql @sql;
+
+-- base64_to_bytes (scalar)
+if object_id(@schema_name + N'.base64_to_bytes', 'FN') is not null
+begin
+    set @sql = N'drop function ' + quotename(@schema_name) + N'.base64_to_bytes;';
+    exec sp_executesql @sql;
+end;
+
+set @sql = N'
+create function ' + quotename(@schema_name) + N'.base64_to_bytes(@encoded nvarchar(max))
+returns varbinary(max)
+as external name [' + @assembly_name + N'].[SharpPyxis.SqlServer.SqlClr.TextEncoding].[Base64ToBytes];';
 exec sp_executesql @sql;
 
 print 'installation complete.';

@@ -49,5 +49,31 @@ namespace SharpPyxis.SqlServer.SqlClr
             byte[] bytes = EncodingUtils.TextToBytes(value, encoding.IsNull ? null : encoding.Value);
             return new SqlBytes(bytes);
         }
+
+        /// <summary>Encodes a byte array to its Base64 string representation.</summary>
+        /// <param name="data">Raw byte array to encode.</param>
+        [SqlFunction(DataAccess = DataAccessKind.None, IsDeterministic = true)]
+        public static SqlString BytesToBase64(SqlBytes data)
+        {
+            if (data == null || data.IsNull)
+            {
+                return SqlString.Null;
+            }
+
+            return new SqlString(EncodingUtils.BytesToBase64(data.Value));
+        }
+
+        /// <summary>Decodes a Base64 string to its original byte array.</summary>
+        /// <param name="encoded">Base64-encoded string to decode.</param>
+        [SqlFunction(DataAccess = DataAccessKind.None, IsDeterministic = true)]
+        public static SqlBytes Base64ToBytes(SqlString encoded)
+        {
+            if (encoded.IsNull)
+            {
+                return SqlBytes.Null;
+            }
+
+            return new SqlBytes(EncodingUtils.Base64ToBytes(encoded.Value));
+        }
     }
 }

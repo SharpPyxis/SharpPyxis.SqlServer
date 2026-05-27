@@ -21,5 +21,9 @@ namespace SharpPyxis.SqlServer.SqlClr.Util
             Encoding enc = string.IsNullOrWhiteSpace(encodingName) ? Encoding.UTF8 : Encoding.GetEncoding(encodingName);
             return data == null ? null : enc.GetString(data);
         }
+
+        public static string BytesToBase64(byte[] data) => Convert.ToBase64String(data);
+
+        public static byte[] Base64ToBytes(string encoded) => Convert.FromBase64String(encoded);
     }
 }
