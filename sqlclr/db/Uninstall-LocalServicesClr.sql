@@ -13,8 +13,8 @@ declare
 
 -- 1) drop functions in the target database
 set @sql = N'use ' + quotename(@database_name) + N';
-if object_id(''' + quotename(@schema_name) + N'.http_send'', ''IF'') is not null drop function ' + quotename(@schema_name) + N'.http_send;
-if object_id(''' + quotename(@schema_name) + N'.http_multipart_build'', ''IF'') is not null drop function ' + quotename(@schema_name) + N'.http_multipart_build;
+if object_id(''' + quotename(@schema_name) + N'.http_send'', ''FT'') is not null drop function ' + quotename(@schema_name) + N'.http_send;
+if object_id(''' + quotename(@schema_name) + N'.http_multipart_build'', ''FT'') is not null drop function ' + quotename(@schema_name) + N'.http_multipart_build;
 if object_id(''' + quotename(@schema_name) + N'.url_encode'', ''FN'') is not null drop function ' + quotename(@schema_name) + N'.url_encode;
 if object_id(''' + quotename(@schema_name) + N'.text_to_bytes'', ''FN'') is not null drop function ' + quotename(@schema_name) + N'.text_to_bytes;
 if object_id(''' + quotename(@schema_name) + N'.bytes_to_text'', ''FN'') is not null drop function ' + quotename(@schema_name) + N'.bytes_to_text;
